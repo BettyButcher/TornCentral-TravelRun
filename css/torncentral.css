@@ -1,0 +1,86 @@
+body { background-color: black; color: lightsalmon; }
+a:link { background-color: black; color: orangered; }
+a:visited { background-color: black; color: orangered; }
+a:hover { background-color: black; color: orangered; }
+a:active { background-color: black; color: orangered; }
+.minor { font-size: smaller; }
+.valuedata { text-align: right; }
+.timedata { text-align: center; }
+
+div.timeinfo {}
+div.updatelinks {}
+div.nav {}
+div.itemdata {}
+div.flowerchart {}
+div.footer {}
+
+tr.default { background-color: black; color: orange; }
+tr.drug { background-color: black; color: orange; }
+tr.flower { background-color: black; color: orange; }
+tr.plushie { background-color: black; color: orange; }
+tr.alcohol { background-color: black; color: orange; }
+tr.misc { background-color: black; color: orange; }
+
+div.drugnav {}
+div.drugdata {}
+div.drugdata tr.oddrow {}
+div.drugdata tr.evenrow {}
+
+div.updatenav {}
+div.updateform {}
+
+div.mantitle {}
+div.mannav {}
+div.manform {}
+
+body { background-color: snow; color: black;font: 11pt Arial, Helvetica, sans-serif; }
+.minor { font-size: smaller; }
+.valuedata { text-align: right; }
+.timedata { text-align: center; }
+
+div.timeinfo {}
+div.updatelinks { margin-top: 2em; margin-bottom: 2em; font-size: 133%; }
+div.nav {}
+div.itemdata { margin-top: 2em; margin-bottom: 2em; }
+div.flowerchart { margin-left: 4em; }
+div.footer { margin-top: 2em; }
+
+tr.default { background-color: grey; color: black; }
+tr.drug { background-color: yellow; color: black; }
+tr.flower { background-color: limegreen; color: black; }
+tr.plushie { background-color: pink; color: black; }
+tr.alcohol { background-color: lightcyan; color: black; }
+tr.misc { background-color: grey; color: black; }
+
+div.drugnav { margin-bottom: 2em; }
+div.drugdata {}
+div.drugdata tr.oddrow { background-color: silver; color: black; }
+div.drugdata tr.evenrow { background-color: gainsboro; color: black; }
+
+div.updatenav {}
+div.updateform {}
+
+div.mantitle {}
+div.mannav {}
+div.manform {}
+
+div.cssnav {}
+div.cssmain {}
+
+div.prizenav {}
+div.prizemain {}
+
+.stitched {
+   padding: 20px;
+   margin: 10px;
+   background: #ff0030;
+   color: #fff;
+   font-size: 21px;
+   font-weight: bold;
+   line-height: 1.3em;
+   border: 2px dashed #fff;
+   border-radius: 10px;
+   box-shadow: 0 0 0 4px #ff0030, 2px 1px 6px 4px rgba(10, 10, 0, 0.5);
+   text-shadow: -1px -1px #aa3030;
+   font-weight: normal;
+}
