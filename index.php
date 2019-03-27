@@ -4,7 +4,7 @@
 require '.config.php';
 require 'fx.inc.php';
 
-ob_start('ob_tidyhandler');
+//ob_start('ob_tidyhandler');
 
 session_start();
 $_SESSION['timecheck'] = date('YmdHis', time() + 1);
@@ -14,12 +14,18 @@ if (isset($_GET['c'])) $cc = substr(trim($_GET['c']), 0, 1);
 if (!in_array($cc, array('m', 'i', 'c', 'h', 'u', 'a', 's', 'j', 'x', 'e', 'z'))) $cc = 'm';
 
 // open the database connection
-$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PASS) or die(mysql_error());
-mysql_select_db(SQL_DATA);
+$conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PASS, SQL_DATA);
+
+if (!$conn) {
+  echo "Error: Unable to connect to MySQL." . PHP_EOL;
+  echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+  echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+  exit;
+}
 
 // update count
 $sql = "update counts set value = value + 1 where vkey = '$cc'";
-mysql_query($sql) or die(mysql_error());
+mysqli_query($conn, $sql) or die($conn->error);
 
 // delete old data
 $sql = "delete from stock where utctime < now() - interval 32 day";
@@ -91,7 +97,7 @@ $lastflower = 20 * (mysql_result($res, 0, 0) - 1);
 mysql_free_result($res);
 
 // close the database connection
-mysql_close($conn);
+mysqli_close($conn);
 
 httpheader();
 echo htmlheader('Travelrun: Home', usercss());
