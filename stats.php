@@ -4,27 +4,40 @@
 require '.config.php';
 require 'fx.inc.php';
 
-ob_start('ob_tidyhandler');
+//ob_start('ob_tidyhandler');
 
 // open the database connection
-$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PASS) or die(mysql_error());
-mysql_select_db(SQL_DATA);
+$conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PASS, SQL_DATA);
+
+if (!$conn) {
+    echo "Error: Unable to connect to MySQL." . PHP_EOL;
+    echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+    echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+    exit;
+}
 
 $cvk = array();
 $upk = $viewk = 0;
 $sql = "select vkey, value from counts";
-$res = mysql_query($sql) or die(mysql_error());
-while ($row = mysql_fetch_row($res)) {
-  if ($row[0] == 'update2') {
-    $upk = $row[1];
-  } else {
-    $viewk += $row[1];
-    $cvk[$row[0]] = $row[1];
-  }
-}
-mysql_free_result($res);
+$res = mysqli_query($conn, $sql) or die($conn->error);
 
-mysql_close($conn);
+$rows = mysqli_fetch_all($res, MYSQLI_ASSOC);
+
+// Only iter if there are rows.
+if ($rows) {
+    foreach ($rows as $row) {
+        if ($row['vkey'] == 'update2') {
+            $upk = (int) $row['value'];
+        } else {
+            $viewk += (int) $row['value'];
+            $cvk[$row['vkey']] = (int) $row['value'];
+        }
+    }
+}
+
+mysqli_free_result($res);
+
+mysqli_close($conn);
 
 $m=number_format($cvk["m"]);
 $i=number_format($cvk["i"]);
