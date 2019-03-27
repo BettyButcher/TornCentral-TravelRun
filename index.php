@@ -3,7 +3,6 @@
 
 require '.config.php';
 require 'fx.inc.php';
-
 //ob_start('ob_tidyhandler');
 
 session_start();
@@ -100,20 +99,20 @@ if ($rows) {
 mysqli_free_result($res);
 
 // get update frequency
-$cvk = array();
+$cvk = [];
 $upk = $viewk = 0;
 $sql = "select vkey, value from counts";
 $res = mysqli_query($conn, $sql) or die($conn->error);
-$rows = mysqli_fetch_array($res);
+$rows = mysqli_fetch_all($res, MYSQLI_ASSOC);
 
 // Only iter if there are rows.
 if ($rows) {
     foreach ($rows as $row) {
-        if ($row[0] == 'update2') {
-            $upk = $row[1];
+        if ($row['vkey'] == 'update2') {
+            $upk = (int) $row['value'];
         } else {
-            $viewk += $row[1];
-            $cvk[$row[0]] = $row[1];
+            $viewk += (int) $row['value'];
+            $cvk[$row['vkey']] = (int) $row['value'];
         }
     }
 }
@@ -124,7 +123,7 @@ mysqli_free_result($res);
 $sql = "select valint from config where configkey = 'LAST_FLOWER_PAGE'";
 $res = mysqli_query($conn, $sql) or die($conn->error);
 
-$row = mysqli_fetch_assoc($result);
+$row = mysqli_fetch_assoc($res);
 $lastflower = 20 * ($row['valint'] - 1);
 mysqli_free_result($res);
 
