@@ -2,3 +2,12 @@
 .config.php
 sql_table/travel_run_full.sql
 
+# Web Files that are not in current repo but maybe should be?
+860.jpg
+aaw/
+css/IP*.css
+images/
+img/
+js/
+map/
+src/
