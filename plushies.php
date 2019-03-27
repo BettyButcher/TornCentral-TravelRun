@@ -4,7 +4,7 @@
 require '.config.php';
 require 'fx.inc.php';
 
-ob_start('ob_tidyhandler');
+//ob_start('ob_tidyhandler');
 
 httpheader();
 echo htmlheader('Travelrun: Plushies', usercss());
@@ -12,11 +12,17 @@ echo htmlheader('Travelrun: Plushies', usercss());
 echo '<br><br>';
 
 // open the database connection
-$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PASS) or die(mysql_error());
-mysql_select_db(SQL_DATA);
+$conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PASS, SQL_DATA);
+
+if (!$conn) {
+  echo "Error: Unable to connect to MySQL." . PHP_EOL;
+  echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+  echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+  exit;
+}
 
 // get the data
-$plushies = array();
+$plushies = [];
 $sql = <<<SQL_PLUSHIES
 select stock.item, item.itemname, stock.country, country.countryname, stock.utctime, stock.price, stock.quantity
 from stock, lastplushies, item, country
@@ -27,12 +33,22 @@ where stock.item = lastplushies.item
   and stock.utctime = lastplushies.lastutc
 order by stock.utctime
 SQL_PLUSHIES;
-$res = mysql_query($sql) or die(mysql_error());
-while ($row = mysql_fetch_row($res)) {
-  $plushies[] = array($row[0], $row[1], $row[2], $row[3], $row[4], $row[5], $row[6]);
+$res = mysqli_query($conn, $sql) or die($conn->error);
+$rows = mysqli_fetch_all($res, MYSQLI_ASSOC);
+
+foreach($rows as $row) {
+  $plushies[] = [
+      $row['item'],
+      $row['itemname'],
+      $row['country'],
+      $row['countryname'],
+      $row['utctime'],
+      $row['price'],
+      $row['quantity']
+  ];
 }
-mysql_free_result($res);
-mysql_close($conn);
+mysqli_free_result($res);
+mysqli_close($conn);
 
 echo '<div class="drugdata">';
 echo '<table border="0" cellpadding="0" cellspacing="1" width="100%">';
