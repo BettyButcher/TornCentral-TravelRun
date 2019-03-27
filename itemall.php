@@ -4,46 +4,58 @@
 require '.config.php';
 require 'fx.inc.php';
 
-ob_start('ob_tidyhandler');
+//ob_start('ob_tidyhandler');
 
 httpheader();
 echo htmlheader('Travelrun: All Items', usercss());
 
 echo '<br><br>';
 // open the database connection
-$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PASS) or die(mysql_error());
-mysql_select_db(SQL_DATA);
+$conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PASS, SQL_DATA);
+
+if (!$conn) {
+  echo "Error: Unable to connect to MySQL." . PHP_EOL;
+  echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+  echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+  exit;
+}
 
 // get the data
-$itemall = array();
-$sql = <<<SQL_ITEMALL
+$itemall = [];
+$sql = "
 select s.utctime, country.countryname, item.itemname, s.quantity, s.price
-
 from stock s
    , (select max(utctime) as mt, country, item from stock where manual = 0 group by country, item) smax
    , country
    , item
-
 where s.utctime = smax.mt
   and s.country = smax.country
   and s.item = smax.item
   and s.country = country.countryid
   and s.item = item.itemid
   and s.manual = 0
-SQL_ITEMALL;
+";
 
 if (isset($_GET['f']) && (trim($_GET['f']) != '')) {
-  $safefilter = mysql_real_escape_string($_GET['f']);
+  $safefilter = mysqli_real_escape_string($_GET['f']);
   $sql .= " and item.itemname like '%$safefilter%'";
 }
 
 $sql .= " order by 1 desc, 2, 3";
-$res = mysql_query($sql) or die(mysql_error());
-while ($row = mysql_fetch_row($res)) {
-  $itemall[] = array($row[0], $row[1], $row[2], $row[3], $row[4]);
+$res = mysqli_query($conn, $sql) or die($conn->error);
+$rows = mysqli_fetch_all($res, MYSQLI_ASSOC);
+
+foreach($rows as $row) {
+  $itemall[] = [
+      $row['utctime'],
+      $row['countryname'],
+      $row['itemname'],
+      $row['quantity'],
+      $row['price'],
+  ];
 }
-mysql_free_result($res);
-mysql_close($conn);
+mysqli_free_result($res);
+mysqli_close($conn);
 
 echo '<div class="itemalldata">';
 echo '<table width="100%" border="0" cellpadding="0" cellspacing="1">';
