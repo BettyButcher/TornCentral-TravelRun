@@ -80,17 +80,17 @@ $sql = "
 ";
 
 $res = mysqli_query($conn, $sql) or die($conn->error);
-$rows = mysqli_fetch_array($res);
+$rows = mysqli_fetch_all($res, MYSQLI_ASSOC);
 
 // Only do this if there is actually $rows.
 if ($rows) {
-    for ($i = 0; $i < count($rows); $i++) {
+    foreach ($rows as $row) {
         $row = [
-            $rows[$i][0],
-            $rows[$i][1],
-            $rows[$i][2],
-            $rows[$i][3],
-            $rows[$i][4]
+            $row['itemtypename'],
+            $row['itemname'],
+            $row['price'],
+            $row['quantity'],
+            $row['cssclass']
         ];
         $extradata[] = $row;
     }
