@@ -12,17 +12,23 @@ $cch = 'm';
 $prize = 0;
 
 // open the database connection
-$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PASS) or die(mysql_error());
-mysql_select_db(SQL_DATA);
+$conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PASS, SQL_DATA);
+
+if (!$conn) {
+    echo "Error: Unable to connect to MySQL." . PHP_EOL;
+    echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+    echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+    exit;
+}
 
 // save raw $_POST['data'] in the database
 $utc = gmdate('Y-m-d H:i:s');
-$pd = mysql_real_escape_string($_POST['data']);
+$pd = mysqli_real_escape_string($conn, $_POST['data']);
 $s = $_SERVER['REMOTE_ADDR'];
-$ua = mysql_real_escape_string($_SERVER['HTTP_USER_AGENT']);
-$r = mysql_real_escape_string($_SERVER['HTTP_REFERER']);
+$ua = mysqli_real_escape_string($conn, $_SERVER['HTTP_USER_AGENT']);
+$r = mysqli_real_escape_string($conn, $_SERVER['HTTP_REFERER']);
 $sql = "insert into post (postid, postUTC, postdata, user_agent, referer, sender) values (NULL, '$utc', '$pd', '$ua', '$r', '$s')";
-mysql_query($sql) or die(mysql_error());
+mysqli_query($conn, $sql) or die($conn->error);
 
 // check for NaN and abort
 if (preg_match('/\s+NaN\s+/', $_POST['data'])) {
@@ -35,18 +41,19 @@ if (preg_match('/\s+NaN\s+/', $_POST['data'])) {
 $n = preg_match('/are in ([A-Z a-z]+) and have/', $_POST['data'], $matches);
 if ($n == 1) {
   $country = $matches[1];
-  $safe_country = mysql_real_escape_string($country);
+  $safe_country = mysqli_real_escape_string($conn, $country);
 
   $sql2 = "select countryid, flower, letter, itemname from country, item where country.flower = item.itemid and countryname = '$safe_country'";
-  $res2 = mysql_query($sql2) or die(mysql_error());
+  $res2 = mysqli_query($conn, $sql2) or die($conn->error);
   $cid = $fid = 0;
-  if (mysql_num_rows($res2) == 1) {
-    $cid = mysql_result($res2, 0, 0);
-    $fid = mysql_result($res2, 0, 1);
-    $cch = mysql_result($res2, 0, 2);
-    $fin = mysql_result($res2, 0, 3);
+  if (mysqli_num_rows($res2) == 1) {
+        $row = mysqli_fetch_assoc($res2);
+        $cid = $row['countryid'];
+        $fid = $row['flower'];
+        $cch = $row['letter'];
+        $fin = $row['itemname'];
   }
-  mysql_free_result($res2);
+  mysqli_free_result($res2);
   if ($cid != 0) {
     $_SESSION['recent_update'] = array();
     $_SESSION['recent_update']['country'] = $country;
@@ -56,11 +63,12 @@ if ($n == 1) {
     $gotplushie = 0;
     $items = array();
     $sql_items = "select itemname, itemid from item";
-    $res_items = mysql_query($sql_items) or die(mysql_error());
-    while ($row_items = mysql_fetch_row($res_items)) {
-      $items[$row_items[0]] = $row_items[1];
+    $res_items = mysqli_query($conn, $sql_items) or die($conn->error);
+    $rows = mysqli_fetch_all($res_items, MYSQLI_ASSOC);
+    foreach ($rows as $row) {
+        $items[$row['itemname']] = $row['itemid'];
     }
-    mysql_free_result($res_items);
+    mysqli_free_result($res_items);
 
     $t = array('Alcohol', 'Defensive', 'Drug', 'Enhancer', 'Flower', 'Medical', 'Melee', 'Other', 'Plushie', 'Primary', 'Secondary', 'Temporary');
     $rxt = implode('|', $t);
@@ -76,7 +84,7 @@ if ($n == 1) {
         if ($itemid != 0) {
 			setNewRecord($cid, $itemid, $itemcost, $itemleft);
 		  $sql4 = "insert into stock (stockid, utctime, country, item, price, quantity, manual, sender) values (NULL, utc_timestamp(), $cid, $itemid, $itemcost, $itemleft, 0, '$s')";
-          mysql_query($sql4) or die(mysql_error());
+          mysqli_query($conn, $sql4) or die($conn->error);
           if ($itemid == $fid) {
             $gotflower = 1;
             $_SESSION['recent_update']['qtd'] = $itemleft;
@@ -95,7 +103,7 @@ if ($n == 1) {
       if (isset($prices[$cid])) $price = $prices[$cid];
 		setNewRecord($cid, $fid, $price, 0);
       $sql5 = "insert into stock (stockid, utctime, country, item, price, quantity, manual, sender) values (NULL, utc_timestamp(), $cid, $fid, $price, 0, 0, '$s')";
-      mysql_query($sql5) or die(mysql_error());
+      mysqli_query($conn, $sql5) or die($conn->error);
     }
     if (!$gotplushie) {
       $_SESSION['recent_update']['plushie'] .= 'No plushies<br>';
@@ -106,7 +114,7 @@ if ($n == 1) {
 
   // update count
   $sql = "update counts set value = value + 1 where vkey = 'update2'";
-  mysql_query($sql) or die(mysql_error());
+  mysqli_query($conn, $sql) or die($conn->error);
 
   # delete files starting with $cch
   $files = glob('images/' . $cch . '*');
@@ -116,7 +124,7 @@ if ($n == 1) {
 }
 
 // close the database connection
-mysql_close($conn);
+mysqli_close($conn);
 
 usleep(100000); // sleep 0.1 seconds: it's hardly noticeable and it, hopefully, gives time for image to be created
 

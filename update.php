@@ -4,7 +4,7 @@
 #require '.config.php';
 require 'fx.inc.php';
 
-ob_start('ob_tidyhandler');
+//ob_start('ob_tidyhandler');
 
 // open the database connection
 #$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PASS) or die(mysql_error());

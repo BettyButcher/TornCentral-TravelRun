@@ -30,9 +30,15 @@ if (!is_file($filename)) {
     if (is_file($file)) unlink($file);
   }
 
-  #connect to database
-  $conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PASS) or die(mysql_error());
-  mysql_select_db(SQL_DATA);
+// open the database connection
+  $conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PASS, SQL_DATA);
+
+  if (!$conn) {
+    echo "Error: Unable to connect to MySQL." . PHP_EOL;
+    echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+    echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+    exit;
+  }
 
   # create black image
   $im = imagecreatetruecolor(640, 480) or die('image fail');
@@ -51,12 +57,13 @@ if (!is_file($filename)) {
 
   #title
   $sql = "select country.countryname, item.itemname, country.countryid, country.flower from country, item where country.letter = '$ccode' and country.flower = item.itemid";
-  $res = mysql_query($sql) or die(mysql_error());
-  $title = mysql_result($res, 0, 0);
-  $subtitle = mysql_result($res, 0, 1);
-  $cid = mysql_result($res, 0, 2);
-  $fid = mysql_result($res, 0, 3);
-  mysql_free_result($res);
+  $res = mysqli_query($conn, $sql) or die($conn->error);
+  $row = mysqli_fetch_assoc($res);
+  $title = $row['countryname'];
+  $subtitle = $row['itemname'];
+  $cid = $row['countryid'];
+  $fid = $row['flower'];
+  mysqli_free_result($res);
   centeredtext($im, $title, 3, 0, 0, 639, 18, $black, $white, $white);
   centeredtext($im, $subtitle, 2, 0, 18, 639, 30, $black, $white, $white);
 
@@ -101,8 +108,9 @@ if (!is_file($filename)) {
 
   #get data for flower $_GET['f']
   $sql = "select utctime, price, quantity from stock where country = $cid and item = $fid";
-  $res = mysql_query($sql) or die(mysql_error());
-  while ($row = mysql_fetch_row($res)) {
+  $res = mysqli_query($conn, $sql) or die($conn->error);
+  $rows = mysqli_fetch_all($res, MYSQLI_ASSOC);
+  foreach ($rows as $row) {
     $hour = date('H', strtotime($row[0]));
     $minute = date('i', strtotime($row[0]));
     $daytime = $hour * 60 + $minute;
@@ -110,23 +118,28 @@ if (!is_file($filename)) {
     $realy = (10000 - $row[2]) / 10000 * 420 + 40;
 
     $delta = time() - strtotime($row[0] . ' UTC');
-         if ($delta >= 4*DAYS) imagesetpixel($im, $realx, $realy, $black);
-    else if ($delta >= 3*DAYS) imagefilledarc($im, $realx, $realy, 3, 3, 0, 360, $black, IMG_ARC_PIE);
-    else if ($delta >= 2*DAYS) imagefilledarc($im, $realx, $realy, 5, 5, 0, 360, $green, IMG_ARC_PIE);
-    else if ($delta >= 1*DAYS) imagefilledarc($im, $realx, $realy, 7, 7, 0, 360, $blue, IMG_ARC_PIE);
-    else                       imagefilledarc($im, $realx, $realy, 9, 9, 0, 360, $red, IMG_ARC_PIE);
+
+    if ($delta >= 4*DAYS)
+      imagesetpixel($im, $realx, $realy, $black);
+    else if ($delta >= 3*DAYS)
+      imagefilledarc($im, $realx, $realy, 3, 3, 0, 360, $black, IMG_ARC_PIE);
+    else if ($delta >= 2*DAYS)
+      imagefilledarc($im, $realx, $realy, 5, 5, 0, 360, $green, IMG_ARC_PIE);
+    else if ($delta >= 1*DAYS)
+      imagefilledarc($im, $realx, $realy, 7, 7, 0, 360, $blue, IMG_ARC_PIE);
+    else
+      imagefilledarc($im, $realx, $realy, 9, 9, 0, 360, $red, IMG_ARC_PIE);
   }
 
   #free resources
-  mysql_free_result($res);
+  mysqli_free_result($res);
 
   imagepng($im, $filename);
   imagedestroy($im);
 
   #close database connection
-  mysql_close($conn);
+  mysqli_close($conn);
 }
 
 header('Content-Type: image/png');
 readfile($filename);
-?>

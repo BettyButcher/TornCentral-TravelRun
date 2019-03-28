@@ -3,8 +3,7 @@
 
 require '.config.php';
 require 'fx.inc.php';
-
-ob_start('ob_tidyhandler');
+//ob_start('ob_tidyhandler');
 
 session_start();
 $_SESSION['timecheck'] = date('YmdHis', time() + 1);
@@ -14,22 +13,28 @@ if (isset($_GET['c'])) $cc = substr(trim($_GET['c']), 0, 1);
 if (!in_array($cc, array('m', 'i', 'c', 'h', 'u', 'a', 's', 'j', 'x', 'e', 'z'))) $cc = 'm';
 
 // open the database connection
-$conn = mysql_connect(SQL_HOST, SQL_USER, SQL_PASS) or die(mysql_error());
-mysql_select_db(SQL_DATA);
+$conn = mysqli_connect(SQL_HOST, SQL_USER, SQL_PASS, SQL_DATA);
+
+if (!$conn) {
+  echo "Error: Unable to connect to MySQL." . PHP_EOL;
+  echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+  echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+  exit;
+}
 
 // update count
 $sql = "update counts set value = value + 1 where vkey = '$cc'";
-mysql_query($sql) or die(mysql_error());
+mysqli_query($conn, $sql) or die($conn->error);
 
 // delete old data
 $sql = "delete from stock where utctime < now() - interval 32 day";
-mysql_query($sql) or die(mysql_error());
+mysqli_query($conn, $sql) or die($conn->error);
 $sql = "delete from post where postUTC < now() - interval 3 day";
-mysql_query($sql) or die(mysql_error());
+mysqli_query($conn, $sql) or die($conn->error);
 
 // get last update date/time from the database
 $sql = <<<SQL_LAST
-select country.countryname, max(stock.utctime)
+select country.countryname, max(stock.utctime) as 'last_updated'
 from country, stock
 where stock.country = country.countryid
   and stock.manual = 0
@@ -37,61 +42,93 @@ group by country.countryname
 order by max(stock.utctime) desc
 limit 1
 SQL_LAST;
-$res = mysql_query($sql) or die(mysql_error());
-$lastcountry = mysql_result($res, 0, 0);
-$lastupdate = mysql_result($res, 0, 1);
-mysql_free_result($res);
+$res = mysqli_query($conn, $sql) or die($conn->error);
 
-$sql = "select max(stock.utctime) from stock, country where stock.country = country.countryid and country.letter = '$cc' and stock.manual = 0";
-$res = mysql_query($sql) or die(mysql_error());
-$lastlocalupdate = mysql_result($res, 0, 0);
-mysql_free_result($res);
+$row = mysqli_fetch_assoc($res);
+
+$lastcountry = $row['countryname'];
+$lastupdate = $row['last_updated'];
+mysqli_free_result($res);
+
+$sql = "select max(stock.utctime) as 'last_local_update' from stock, country where stock.country = country.countryid and country.letter = '$cc' and stock.manual = 0";
+
+$res = mysqli_query($conn, $sql) or die($conn->error);
+$row = mysqli_fetch_assoc($res);
+
+$lastlocalupdate = $row['last_local_update'];
+mysqli_free_result($res);
 
 $sql = "select countryname, countryid from country where letter = '$cc'";
-$res = mysql_query($sql) or die(mysql_error());
-$cname = mysql_result($res, 0, 0);
-$ccode = mysql_result($res, 0, 1);
-mysql_free_result($res);
+$res = mysqli_query($conn, $sql) or die($conn->error);
+$row = mysqli_fetch_assoc($res);
 
-$extradata = array();
-$sql =<<<SQL_EXTRADATA
-select itemtype.itemtypename, item.itemname, stock.price, stock.quantity, itemtype.cssclass
-from stock, item, itemtype
-where stock.item = item.itemid
-  and item.itemtype = itemtype.itemtypeid
-  and stock.utctime = '$lastlocalupdate'
-  and stock.country = $ccode
-order by itemtype.itemtypename, item.itemname
-SQL_EXTRADATA;
-$res = mysql_query($sql) or die(mysql_error());
-while ($row = mysql_fetch_row($res)) {
-  $extradata[] = array($row[0], $row[1], $row[2], $row[3], $row[4]);
+$cname = $row['countryname'];
+$ccode = $row['countryid'];
+mysqli_free_result($res);
+
+$extradata = [];
+$sql = "
+    select itemtype.itemtypename, item.itemname, stock.price, stock.quantity, itemtype.cssclass
+    from stock,
+         item,
+         itemtype
+    where stock.item = item.itemid
+      and item.itemtype = itemtype.itemtypeid
+      and stock.utctime = '{$lastlocalupdate}'
+      and stock.country = '{$ccode}'
+    order by itemtype.itemtypename, item.itemname;
+";
+
+$res = mysqli_query($conn, $sql) or die($conn->error);
+$rows = mysqli_fetch_all($res, MYSQLI_ASSOC);
+
+// Only do this if there is actually $rows.
+if ($rows) {
+    foreach ($rows as $row) {
+        $row = [
+            $row['itemtypename'],
+            $row['itemname'],
+            $row['price'],
+            $row['quantity'],
+            $row['cssclass']
+        ];
+        $extradata[] = $row;
+    }
 }
-mysql_free_result($res);
+
+mysqli_free_result($res);
 
 // get update frequency
-$cvk = array();
+$cvk = [];
 $upk = $viewk = 0;
 $sql = "select vkey, value from counts";
-$res = mysql_query($sql) or die(mysql_error());
-while ($row = mysql_fetch_row($res)) {
-  if ($row[0] == 'update2') {
-    $upk = $row[1];
-  } else {
-    $viewk += $row[1];
-    $cvk[$row[0]] = $row[1];
-  }
+$res = mysqli_query($conn, $sql) or die($conn->error);
+$rows = mysqli_fetch_all($res, MYSQLI_ASSOC);
+
+// Only iter if there are rows.
+if ($rows) {
+    foreach ($rows as $row) {
+        if ($row['vkey'] == 'update2') {
+            $upk = (int) $row['value'];
+        } else {
+            $viewk += (int) $row['value'];
+            $cvk[$row['vkey']] = (int) $row['value'];
+        }
+    }
 }
-mysql_free_result($res);
+
+mysqli_free_result($res);
 
 // get first post of last page of flower thread
 $sql = "select valint from config where configkey = 'LAST_FLOWER_PAGE'";
-$res = mysql_query($sql) or die(mysql_error());
-$lastflower = 20 * (mysql_result($res, 0, 0) - 1);
-mysql_free_result($res);
+$res = mysqli_query($conn, $sql) or die($conn->error);
+
+$row = mysqli_fetch_assoc($res);
+$lastflower = 20 * ($row['valint'] - 1);
+mysqli_free_result($res);
 
 // close the database connection
-mysql_close($conn);
+mysqli_close($conn);
 
 httpheader();
 echo htmlheader('Travelrun: Home', usercss());
